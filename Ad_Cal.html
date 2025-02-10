@@ -105,16 +105,13 @@
                         inputField = exp.querySelector("#wordle-input"),
                         submitButton = exp.querySelector("#wordle-submit"),
                         messageP = exp.querySelector("#wordle-message");
-                    // fullWordList is used for allowed guesses
                     let fullWordList = [],
                         currentSecret = "",
                         guessCount = 0,
                         usedGuesses = [],
-                        // When false, the secret is chosen from fullWordList; when true, from the custom list.
                         useCustomSecret = false,
                         customSecretList = ["lover", "honey", "najma", "mommy", "babes"];
 
-                    // Fetch the full dictionary (allowed guesses)
                     fetch("5-letter-words.json")
                         .then(response => response.json())
                         .then(data => {
@@ -126,7 +123,6 @@
                             console.error("Error loading 5-letter-words.json:", error);
                         });
 
-                    // Button to switch to custom secret mode (secret word from customSecretList)
                     const customButton = exp.querySelector("#wordle-custom");
                     customButton.onclick = function () {
                         useCustomSecret = true;
@@ -207,8 +203,7 @@
                         }
                     };
                     break;
-                // --- SWAPPED ENVELOPES ---
-                // Envelope 5 (index 4) is now the wish envelope.
+
                 case 4:
                     exp.innerHTML = `<h2>A wish for you, your highness</h2>
                     <p>Enter your wish below and I'll do my best to make it come true.</p>
@@ -240,7 +235,6 @@
                     };
                     addCloseButtonToDiv(exp);
                     break;
-                // Envelope 6 (index 5) is now the rose envelope.
                 case 5:
                     exp.style.backgroundColor = "#f0bbc4";
                     exp.innerHTML = `<h2>For you my pumpkin~</h2>
