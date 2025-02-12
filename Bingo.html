@@ -1,0 +1,342 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bingo!</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #ffc0cb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            text-align: center;
+        }
+
+        .container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 90%;
+            position: relative;
+        }
+
+        #skip-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #eee;
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 1000;
+        }
+
+        h1 {
+            color: #e91e63;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .bingo-container {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .bingo-section {
+            flex: 1;
+            min-width: 300px;
+        }
+
+            .bingo-section h3 {
+                margin-bottom: 10px;
+            }
+
+        .bingo-card {
+            display: grid;
+            grid-template-columns: repeat(5, 50px);
+            grid-gap: 5px;
+            background: #fff;
+            padding: 10px;
+            border: 1px solid #aaa;
+            border-radius: 5px;
+            margin: 0 auto;
+        }
+
+            .bingo-card div {
+                border: 1px solid #ddd;
+                text-align: center;
+                padding: 8px;
+                font-size: 16px;
+                background: #f0f0f0;
+                border-radius: 3px;
+                transition: background 0.2s, border 0.2s;
+            }
+
+        .marked {
+            background-color: yellow !important;
+        }
+
+        .winning {
+            border: 2px solid red !important;
+        }
+
+        #bingo-drawn {
+            font-size: 24px;
+            margin: 20px 0;
+        }
+
+        #countdown {
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: #6200ee;
+        }
+
+        #bingo-message {
+            margin-top: 10px;
+            font-size: 18px;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            background-color: #e91e63;
+            color: #fff;
+            font-size: 16px;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+
+            button:hover {
+                background-color: #c2185b;
+            }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="skip-container">
+            <label for="skip-password">Skip Game:</label>
+            <input type="password" id="skip-password" placeholder="Password">
+        </div>
+        <h1>Bingo ...? or rather be-my-wife</h1>
+        <div class="bingo-container">
+            <div class="bingo-section">
+                <h3>Your Card</h3>
+                <div id="bingo-player-card" class="bingo-card"></div>
+            </div>
+            <div class="bingo-section">
+                <h3>Computer Card</h3>
+                <div id="bingo-computer-card" class="bingo-card"></div>
+            </div>
+        </div>
+        <div id="countdown"></div>
+        <div id="bingo-drawn"></div>
+        <button id="bingo-check">BINGO!</button>
+        <div id="bingo-message"></div>
+        <div id="next-game-container"></div>
+    </div>
+    <script>
+        let playerCard = [], computerCard = [], drawnNumbers = [];
+        let gameActive = true;
+        let drawInterval;
+        function generateBingoCard() {
+            const ranges = [
+                { min: 1, max: 15 },
+                { min: 16, max: 30 },
+                { min: 31, max: 45 },
+                { min: 46, max: 60 },
+                { min: 61, max: 75 }
+            ];
+            function createCard() {
+                let card = [];
+                for (let col = 0; col < 5; col++) {
+                    let nums = [];
+                    while (nums.length < 5) {
+                        let num = Math.floor(Math.random() * (ranges[col].max - ranges[col].min + 1)) + ranges[col].min;
+                        if (!nums.includes(num)) nums.push(num);
+                    }
+                    card.push(nums);
+                }
+                card[2][2] = "FREE";
+                return card;
+            }
+            playerCard = createCard();
+            computerCard = createCard();
+            drawnNumbers = [];
+            displayBingoCards();
+            document.getElementById('bingo-drawn').innerText = "";
+            document.getElementById('bingo-message').innerText = "";
+            document.getElementById('next-game-container').innerHTML = "";
+        }
+        function displayBingoCards() {
+            function displayCard(card, elementId) {
+                const container = document.getElementById(elementId);
+                container.innerHTML = "";
+                for (let row = 0; row < 5; row++) {
+                    for (let col = 0; col < 5; col++) {
+                        let cell = document.createElement('div');
+                        cell.innerText = card[col][row];
+                        cell.setAttribute('data-row', row);
+                        cell.setAttribute('data-col', col);
+                        if (card[col][row] === "FREE") {
+                            cell.classList.add("marked");
+                        }
+                        container.appendChild(cell);
+                    }
+                }
+            }
+            displayCard(playerCard, "bingo-player-card");
+            displayCard(computerCard, "bingo-computer-card");
+        }
+        function markBingoNumber(elementId, num) {
+            const container = document.getElementById(elementId);
+            const cells = container.querySelectorAll("div");
+            cells.forEach(cell => {
+                if (parseInt(cell.innerText) === num) {
+                    cell.classList.add("marked");
+                }
+            });
+        }
+        function getMarkedGrid(cardId) {
+            const container = document.getElementById(cardId);
+            const cells = container.querySelectorAll("div");
+            let grid = [];
+            for (let i = 0; i < 5; i++) {
+                grid[i] = [];
+                for (let j = 0; j < 5; j++) {
+                    grid[i][j] = cells[i * 5 + j].classList.contains("marked");
+                }
+            }
+            return grid;
+        }
+        function getWinningLineDOM(cardId) {
+            let grid = getMarkedGrid(cardId);
+            for (let i = 0; i < 5; i++) {
+                if (grid[i].every(v => v)) return { type: "row", index: i };
+            }
+            for (let j = 0; j < 5; j++) {
+                let col = [];
+                for (let i = 0; i < 5; i++) {
+                    col.push(grid[i][j]);
+                }
+                if (col.every(v => v)) return { type: "col", index: j };
+            }
+            let diag1 = [];
+            for (let i = 0; i < 5; i++) {
+                diag1.push(grid[i][i]);
+            }
+            if (diag1.every(v => v)) return { type: "diag", which: "primary" };
+            let diag2 = [];
+            for (let i = 0; i < 5; i++) {
+                diag2.push(grid[i][4 - i]);
+            }
+            if (diag2.every(v => v)) return { type: "diag", which: "secondary" };
+            return null;
+        }
+        function highlightWinningLine(cardId, winInfo) {
+            const container = document.getElementById(cardId);
+            const cells = container.querySelectorAll("div");
+            if (winInfo.type === "row") {
+                for (let j = 0; j < 5; j++) {
+                    cells[winInfo.index * 5 + j].classList.add("winning");
+                }
+            } else if (winInfo.type === "col") {
+                for (let i = 0; i < 5; i++) {
+                    cells[i * 5 + winInfo.index].classList.add("winning");
+                }
+            } else if (winInfo.type === "diag") {
+                if (winInfo.which === "primary") {
+                    for (let i = 0; i < 5; i++) {
+                        cells[i * 5 + i].classList.add("winning");
+                    }
+                } else if (winInfo.which === "secondary") {
+                    for (let i = 0; i < 5; i++) {
+                        cells[i * 5 + (4 - i)].classList.add("winning");
+                    }
+                }
+            }
+        }
+        function drawNumber() {
+            if (!gameActive || drawnNumbers.length >= 75) return;
+            let num;
+            do {
+                num = Math.floor(Math.random() * 75) + 1;
+            } while (drawnNumbers.includes(num));
+            drawnNumbers.push(num);
+            document.getElementById('bingo-drawn').innerText = "Numbers drawn: " + drawnNumbers.join(', ');
+            markBingoNumber("bingo-computer-card", num);
+            let winComputer = getWinningLineDOM("bingo-computer-card");
+            if (winComputer) {
+                document.getElementById('bingo-message').innerText = "Computer wins!";
+                highlightWinningLine("bingo-computer-card", winComputer);
+                gameActive = false;
+                clearInterval(drawInterval);
+            }
+        }
+        document.getElementById("bingo-player-card").addEventListener("click", function (e) {
+            if (!gameActive) return;
+            let cell = e.target;
+            if (cell.tagName.toLowerCase() !== "div") return;
+            if (cell.classList.contains("marked")) return;
+            if (cell.innerText === "FREE") return;
+            let cellValue = parseInt(cell.innerText);
+            if (drawnNumbers.includes(cellValue)) {
+                cell.classList.add("marked");
+            }
+        });
+        document.getElementById("bingo-check").addEventListener("click", function () {
+            let winPlayer = getWinningLineDOM("bingo-player-card");
+            if (winPlayer) {
+                document.getElementById("bingo-message").innerText = "Bingo! You win!";
+                highlightWinningLine("bingo-player-card", winPlayer);
+                gameActive = false;
+                clearInterval(drawInterval);
+                showNextGameButton();
+            } else {
+                document.getElementById("bingo-message").innerText = "You don't have Bingo yet!";
+            }
+        });
+        function showNextGameButton() {
+            if (document.getElementById("next-game-container").innerHTML.trim() === "") {
+                let nextButton = document.createElement("button");
+                nextButton.innerText = "Next Game";
+                nextButton.addEventListener("click", function () {
+                    window.location.href = "light.html";
+                });
+                document.getElementById("next-game-container").appendChild(nextButton);
+            }
+        }
+        document.getElementById("skip-password").addEventListener("keyup", function () {
+            if (this.value === "apples") {
+                showNextGameButton();
+            }
+        });
+        generateBingoCard();
+        let countdown = 10;
+        const countdownElement = document.getElementById("countdown");
+        countdownElement.innerText = "Starting in: " + countdown;
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdown > 0) {
+                countdownElement.innerText = "Starting in: " + countdown;
+            } else {
+                countdownElement.innerText = "";
+                clearInterval(countdownInterval);
+                drawInterval = setInterval(drawNumber, 1500);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

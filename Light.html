@@ -1,0 +1,163 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Light Flicker</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #ffc0cb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+        }
+
+        .container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 90%;
+            position: relative;
+        }
+
+        h1 {
+            color: #e91e63;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        #light-area {
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            position: relative;
+            background-color: #000;
+            transition: background-color 0.3s;
+            overflow: hidden;
+            border-radius: 10px;
+            margin: 0 auto 10px;
+        }
+
+        img {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        #light-switch {
+            position: absolute;
+            width: 60px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        /* Changed gif from heart to turtle */
+        #heart {
+            display: none;
+            position: absolute;
+            width: 150px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            background-color: #e91e63;
+            color: #fff;
+            font-size: 16px;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+
+            button:hover {
+                background-color: #c2185b;
+            }
+    </style>
+</head>
+<body>
+    <div class="container" id="main-container">
+        <h1>Light Flicker</h1>
+        <div id="light-area">
+            <img id="light-switch" src="off_switch.png" alt="Switch">
+            <img id="heart" src="turtle.gif" alt="Turtle">
+        </div>
+        <p>Catch the moving switch! Click it 5 times to brighten the room.</p>
+    </div>
+    <script>
+        const lightArea = document.getElementById('light-area');
+        const switchImg = document.getElementById('light-switch');
+        const container = document.getElementById('main-container');
+        let lightClicks = 0;
+        let buttonSpawned = false;
+
+        setInterval(() => {
+            const areaRect = lightArea.getBoundingClientRect();
+            const maxX = areaRect.width - 60, maxY = areaRect.height - 60;
+            const randX = Math.random() * maxX, randY = Math.random() * maxY;
+            switchImg.style.left = randX + "px";
+            switchImg.style.top = randY + "px";
+        }, 500);
+
+        switchImg.addEventListener('click', function () {
+            lightClicks++;
+            switchImg.src = "on_switch.png";
+            setTimeout(() => { switchImg.src = "off_switch.png"; }, 200);
+            let brightness = Math.min(100, lightClicks * 20);
+            lightArea.style.backgroundColor = `hsl(0, 0%, ${brightness}%)`;
+
+            if (lightClicks >= 5) {
+                switchImg.style.display = "none";
+                document.getElementById("heart").style.display = "block";
+                if (!buttonSpawned) {
+                    buttonSpawned = true;
+                    const btn = document.createElement("button");
+                    btn.innerText = "Wow.. you did it!";
+                    btn.addEventListener("click", showValentinePage);
+                    container.appendChild(btn);
+                }
+            }
+        });
+
+        function showValentinePage() {
+            container.innerHTML = `
+                    <h1>You and Me!</h1>
+                    <p style="font-size: 18px; line-height: 1.5;">
+                      Be my valentines for real this time, I wanna spend every second with you,
+                      no one deserves you, I don't deserve you, so spare some time for me and just get with me already!
+                      YOU ARE MY LIFE, MY QUEEN, please your highness be my valentines...
+                      </br>
+                      P.S: My love, even when the world feels heavy and the scars of betrayal linger, please know this: you are worth every sunrise,
+                      every heartbeat, and every ounce of love this universe holds. The pain of losing people who couldn’t see your light doesn’t define
+                      you, your courage to keep shining does. I’m here, not just for the easy days, but for every storm, every tear, every moment you
+                      need to remember how fiercely you’re cherished. I choose you, today and always. No matter what comes, I’ll stand by you,
+                      hold your hand, and love you with every breath I have, until my last. You’re my forever, and I’ll never let you walk alone."
+
+
+                    </p>
+                    <div style="margin-top: 20px;">
+                      <button id="yes-btn">Yes</button>
+                      <button id="no-btn">No</button>
+                    </div>
+                  `;
+            document.getElementById("yes-btn").addEventListener("click", function () {
+                alert("Thank you, my love! You're everything to me!");
+            });
+            document.getElementById("no-btn").addEventListener("click", function () {
+                alert("No is not an option!");
+                document.getElementById("yes-btn").click();
+            });
+        }
+    </script>
+</body>
+</html>

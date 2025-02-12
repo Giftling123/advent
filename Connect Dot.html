@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Connect the Dots</title>
+ 
+    <style>
+         body {
+            margin: 0;
+            padding: 0;
+            background: #ffc0cb;  
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            position: relative;
+        }
+
+        h1 {
+            color: #e91e63;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+         #canv-cont {
+            margin: auto;
+            width: 400px;
+            height: 350px;
+        }
+         .sidebar {
+            margin-top: 20px;
+        }
+
+        .card {
+            margin: 10px auto;
+            font-size: 1.2em;
+            color: #e91e63;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            background-color: #e91e63;
+            color: #fff;
+            font-size: 16px;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+
+            button:hover {
+                background-color: #c2185b;
+            }
+         .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+            .close:hover,
+            .close:focus {
+                color: black;
+                text-decoration: none;
+                cursor: pointer;
+            }
+         #skip-container {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 14px;
+        }
+
+            #skip-container input {
+                padding: 5px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                margin-right: 5px;
+            }
+
+            #skip-container button {
+                padding: 5px 10px;
+                font-size: 14px;
+                background-color: #e91e63;
+                border: none;
+                border-radius: 4px;
+                color: #fff;
+                cursor: pointer;
+            }
+
+                #skip-container button:hover {
+                    background-color: #c2185b;
+                }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.7.11/fabric.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Connect the Dots</h1>
+        <div id="canv-cont">
+            <canvas id="c" width="400" height="350"></canvas>
+        </div>
+        <div class="sidebar">
+            <div class="card card-center reveal">
+                <div class="dyn-alert"></div>
+            </div>
+            <div class="card">
+                <div class="title">Time:</div>
+                <div class="dyn-time">60</div>
+            </div>
+            <div class="card">
+                <div class="title">Score:</div>
+                <div class="dyn-score">0</div>
+            </div>
+            <div class="card">
+                <button id="btnHelp">Help</button>
+                <button id="btnRefresh" onClick="releadPage()">Restart</button>
+            </div>
+             <div id="myModal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <div data-role="header">
+                        <h3>Directions</h3>
+                    </div>
+                    <p>Tap a circle and drag nearby circles of the same color.</p>
+                    <p>The longer the line, the more points you get.</p>
+                    <p>No diagonal lines allowed!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+     <div id="skip-container">
+        <input type="password" id="skip-password" placeholder="Enter password">
+        <button id="skip-btn">Skip Game</button>
+    </div>
+
+    <footer></footer>
+    <script>
+ 
+        var color_scheme = ["#E03F3A", "#EADAB8", "#1A91A0", "#5566AC"];
+        var grid = 60;
+        var CIRCLES_PER_ROW = 6;
+        var linked_list = new DoublyList();
+        var lockLine = false;
+        var currentCircle;
+        var line;
+        var isDown;
+        var lineExists = false;
+        var totalLines = 0;
+        var activeColor = "#000";
+        var allLines = [];
+        var gameOver = false;
+         var nextLevelButtonAdded = false;
+
+ 
+         $(document).ready(function () {
+            initModal();
+            var canvas = new fabric.Canvas("c");
+            canvas.selection = false;
+            fabric.Object.prototype.transparentCorners = false;
+
+             for (var i = 0; i < CIRCLES_PER_ROW; i++) {
+                for (var n = 0; n < CIRCLES_PER_ROW; n++) {
+                    var random_color = Math.floor(Math.random() * color_scheme.length);
+                    var circ = new fabric.Circle({
+                        id: (i * CIRCLES_PER_ROW) + n,
+                        in: false,
+                        out: false,
+                        left: n * grid,
+                        top: i * grid,
+                        radius: 15,
+                        fill: color_scheme[random_color],
+                        strokeWidth: 5,
+                        stroke: "rgba(0,0,0,0)",
+                        originX: "left",
+                        originY: "top",
+                        centeredRotation: true,
+                        selectable: false
+                    });
+                    canvas.add(circ);
+                }
+            }
+ 
+            canvas.on("mouse:over", function (e) {
+                e.target.setStroke("white");
+                e.target.setStrokeWidth(5);
+                if (line && !gameOver) {
+                    if (e.target.getFill() == line.getStroke() && isDown) {
+                        lockLine = true;
+                        line.set({ x2: e.target.getCenterPoint().x, y2: e.target.getCenterPoint().y });
+                        currentCircle = e.target;
+                        if (line.x2 != line.x1 && line.y2 != line.y1) {
+                            lockLine = false;
+                        } else if (Math.abs(line.x2 - line.x1) > grid || Math.abs(line.y2 - line.y1) > grid) {
+                            lockLine = false;
+                        } else if (e.target.in) {
+                            lockLine = false;
+                        } else if (e.target.id == linked_list.tail.id) {
+                            lockLine = false;
+                        } else {
+                            lineExists = true;
+                            totalLines++;
+                            var activeCircleCenter = e.target.getCenterPoint();
+                            var points = [activeCircleCenter.x, activeCircleCenter.y, activeCircleCenter.x, activeCircleCenter.y];
+                            allLines[totalLines] = new fabric.Line(points, { strokeWidth: 12, stroke: activeColor, originX: "center", originY: "center" });
+                            e.target.in = true;
+                            line = allLines[totalLines];
+                            lockLine = false;
+                            canvas.add(line);
+                            linked_list.add(e.target.id);
+                        }
+                    } else {
+                        currentCircle = null;
+                    }
+                }
+                canvas.renderAll();
+            }).on("mouse:out", function (e) {
+                e.target.setStroke("rgba(0,0,0,0)");
+                lockLine = false;
+                canvas.renderAll();
+            });
+
+            canvas.on("mouse:down", function (o) {
+                if (o.target.get("type") == "circle") {
+                    if (lineExists && activeColor != o.target.getFill()) {
+                        line = null;
+                        return;
+                    } else {
+                        activeColor = o.target.getFill();
+                        linked_list.add(o.target.id);
+                        o.target.out = true;
+                    }
+                    var activeCircleCenter = o.target.getCenterPoint();
+                    isDown = true;
+                    var points = [activeCircleCenter.x, activeCircleCenter.y, activeCircleCenter.x, activeCircleCenter.y];
+                    allLines[totalLines] = new fabric.Line(points, { strokeWidth: 12, stroke: activeColor, originX: "center", originY: "center" });
+                    line = allLines[totalLines];
+                    canvas.add(line);
+                }
+            });
+
+            canvas.on("mouse:move", function (o) {
+                canvas.renderAll();
+                if (!isDown) return;
+                var pointer = canvas.getPointer(o.e);
+                if (!lockLine) {
+                    allLines[totalLines].set({ x2: pointer.x, y2: pointer.y });
+                }
+                canvas.renderAll();
+            });
+
+            canvas.on("mouse:up", function (o) {
+                isDown = false;
+                if (o.target === null) {
+                    line.remove();
+                } else {
+                    if (line.x2 != line.x1 && line.y2 != line.y1) {
+                        line.remove();
+                    } else if (Math.abs(line.x2 - line.x1) > grid || Math.abs(line.y2 - line.y1) > grid) {
+                        lockLine = false;
+                        line.remove();
+                    }
+                }
+                var coordsToGenerateDots = removeSelectedDots(canvas);
+                addNewDots(coordsToGenerateDots, canvas);
+                console.log(coordsToGenerateDots);
+            });
+
+             setInterval(function () {
+                var timeLeft = parseInt($(".dyn-time").text());
+                timeLeft = timeLeft - 1;
+                if (timeLeft == 5) {
+                    $(".dyn-time").addClass("blink");
+                }
+                if (timeLeft <= 0) {
+                    $(".dyn-time").text("0");
+                    $(".dyn-alert").text("Game Over!");
+                    $(".dyn-alert").addClass("blink");
+                    $(".dyn-time").removeClass("blink");
+                    $(".reveal").addClass("show");
+                    gameOver = true;
+                } else {
+                    $(".dyn-time").text(timeLeft);
+                }
+            }, 1000);
+        });
+
+ 
+        function updateScore(num_circles) {
+            var selection_score = Math.round(Math.exp(num_circles / 1.2) / 2);
+            var totalScore = parseInt($(".dyn-score").text());
+            totalScore += selection_score;
+            $(".dyn-score").text(totalScore);
+
+             if (totalScore >= 250 && !nextLevelButtonAdded) {
+                nextLevelButtonAdded = true;
+                var messageCard = $('<div class="card card-center"><div class="dyn-alert">Man, you are good! but we aren\'t done yet!</div></div>');
+                var nextBtn = $('<button id="nextLevelBtn">Ready for the next?!</button>');
+                $('.sidebar').append(messageCard);
+                $('.sidebar').append(nextBtn);
+                $('#nextLevelBtn').on('click', function () {
+                    window.location.href = "Drop.html";
+                });
+            }
+        }
+ 
+        function initModal() {
+            var modal = document.getElementById("myModal");
+            var btn = document.getElementById("btnHelp");
+            var span = document.getElementsByClassName("close")[0];
+            btn.onclick = function () {
+                modal.style.display = "block";
+            };
+            span.onclick = function () {
+                modal.style.display = "none";
+            };
+            window.onclick = function (event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            };
+        }
+
+ 
+        function addNewDots(coordsToGenerateDots, canvas) {
+            for (var i = 0; i < coordsToGenerateDots.length; i++) {
+                var random_color = Math.floor(Math.random() * color_scheme.length);
+                var circ = new fabric.Circle({
+                    id: coordsToGenerateDots[i].id,
+                    in: false,
+                    out: false,
+                    left: coordsToGenerateDots[i].x,
+                    top: coordsToGenerateDots[i].y - 20,
+                    radius: 15,
+                    fill: color_scheme[random_color],
+                    opacity: 0,
+                    strokeWidth: 5,
+                    stroke: "rgba(0,0,0,0)",
+                    originX: "left",
+                    originY: "top",
+                    centeredRotation: true,
+                    selectable: false
+                });
+                canvas.add(circ);
+                circ.animate({ opacity: "1", top: circ.top + 20 }, {
+                    duration: 950,
+                    onChange: canvas.renderAll.bind(canvas),
+                    easing: fabric.util.ease["easeOutElastic"]
+                });
+            }
+        }
+
+        function removeSelectedDots(canvas) {
+            var coordsToGenerateDots = [];
+            canvas.forEachObject(function (obj) {
+                if (linked_list._length <= 1) return;
+                if (obj.get("type") == "line") {
+                    obj.animate("opacity", "0", {
+                        duration: 75,
+                        onChange: canvas.renderAll.bind(canvas),
+                        onComplete: function () { canvas.remove(obj); }
+                    });
+                    return;
+                }
+                var currentNode = linked_list.head;
+                for (var i = 0; i < linked_list._length; i++) {
+                    if (currentNode.id == obj.id) {
+                        coordsToGenerateDots.push({ x: obj.left, y: obj.top, id: obj.id });
+                        obj.animate("opacity", "0", {
+                            duration: 75,
+                            onChange: canvas.renderAll.bind(canvas),
+                            onComplete: function () { canvas.remove(obj); }
+                        });
+                    }
+                    currentNode = currentNode.next;
+                }
+            });
+            if (linked_list._length > 1 && !gameOver) updateScore(linked_list._length);
+            lineExists = false;
+            linked_list = new DoublyList();
+            return coordsToGenerateDots;
+        }
+
+        function Node(value) {
+            this.id = value;
+            this.previous = null;
+            this.next = null;
+        }
+
+        function DoublyList() {
+            this._length = 0;
+            this.head = null;
+            this.tail = null;
+        }
+
+        DoublyList.prototype.add = function (value) {
+            var node = new Node(value);
+            if (this._length) {
+                this.tail.next = node;
+                node.previous = this.tail;
+                this.tail = node;
+            } else {
+                this.head = node;
+                this.tail = node;
+            }
+            this._length++;
+            return node;
+        };
+
+        function releadPage() {
+            location.reload();
+        }
+ 
+        $('#skip-btn').on('click', function () {
+            var pwd = $('#skip-password').val();
+            if (pwd === 'apples') {
+                window.location.href = "Drop.html";
+            } else {
+                alert("Incorrect password");
+            }
+        });
+    </script>
+</body>
+</html>
